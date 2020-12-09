@@ -95,34 +95,40 @@ const main = async () => {
   });
   txRecp = await tx.wait();
 
-  // Join smart pool
-  // data = BActions.interface.encodeFunctionData("joinSmartPool", [
-  //   crpAddress,
-  //   ethers.utils.parseEther("90"),
-  //   [ethers.utils.parseEther("1"), ethers.utils.parseEther("1")],
-  // ]);
+  // Join smart pool (Add liquidity)
   data = BActions.interface.encodeFunctionData("joinSmartPool", [
     crpAddress,
     ethers.utils.parseEther("90"),
-    [ethers.utils.parseEther("1"), ethers.utils.parseEther("1")],
+    [ethers.utils.parseEther("10"), ethers.utils.parseEther("1")],
   ]);
-  const beforeCrp = await ERC20.attach(crpAddress).balanceOf(user.address)
-  const beforeT0 = await Token0.balanceOf(user.address)
-  const beforeT1 = await Token1.balanceOf(user.address)
   tx = await Proxy["execute(address,bytes)"](BActions.address, data, {
     gasLimit: "16000000",
   });
-  const afterCrp = await ERC20.attach(crpAddress).balanceOf(user.address)
-  const afterT0 = await Token0.balanceOf(user.address)
-  const afterT1 = await Token1.balanceOf(user.address)
 
-  console.log('crp', beforeCrp.toString(), afterCrp.toString())
-  console.log('t0', beforeT0.toString(), afterT0.toString())
-  console.log('t1', beforeT1.toString(), afterT1.toString())
-  
   txRecp = await tx.wait();
 
   // Swap tokens
+  await Token0.approve(bpoolAddress, ethers.constants.MaxUint256);
+  await Token1.approve(bpoolAddress, ethers.constants.MaxUint256);
+
+  const BPool = await ethers.getContractAt("BPool", bpoolAddress);
+
+  let spotPrice = await BPool.getSpotPrice(Token0.address, Token1.address);
+
+  tx = await BPool.swapExactAmountIn(
+    Token0.address,
+    ethers.utils.parseEther("0.01"),
+    Token1.address,
+    ethers.constants.Zero,
+    ethers.constants.MaxUint256
+  );
+
+  await tx.wait()
+
+  // Remove liquidity
+  const crpBal = await ERC20.attach(crpAddress).balanceOf(user.address)
+  tx = await CRPPool.exitPool(crpBal.div(ethers.BigNumber.from('2')), [0, 0])
+  await tx.wait()
 };
 
 main();
