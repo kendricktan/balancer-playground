@@ -114,6 +114,8 @@ abstract contract ConfigurableRightsPool is AbstractPool {
         uint256 addTokenTimeLockInBlocks
     ) external virtual;
 
+    function getController() external virtual view returns (address);
+
     function createPool(uint256 initialSupply) external virtual;
 
     function setCap(uint256 newCap) external virtual;
